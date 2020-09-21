@@ -11,9 +11,10 @@ require (
 	github.com/onsi/ginkgo v1.10.1 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
 	github.com/ontio/ontology-crypto v1.0.9
+	github.com/polynetwork/cosmos-poly-module v0.0.0-20200827085015-12374709b707
 	github.com/polynetwork/poly v0.0.0-20200722075529-eea88acb37b2
 	github.com/polynetwork/poly-go-sdk v0.0.0-20200722030827-6875b6018b93
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
 	github.com/urfave/cli v1.22.4
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 )

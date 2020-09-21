@@ -1,8 +1,10 @@
 .vscode/launch.json
+.idea/*
 .idea/Relayer.iml
 .idea/misc.xml
 .idea/modules.xml
 .idea/vcs.xml
+neo-relayer
 
 boltdb/*
 Logs/*
