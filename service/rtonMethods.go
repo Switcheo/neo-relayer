@@ -24,7 +24,6 @@ import (
 	"github.com/polynetwork/neo-relayer/log"
 	sdkcom "github.com/polynetwork/poly-go-sdk/common"
 	"github.com/polynetwork/poly/common"
-	polycommon "github.com/polynetwork/poly/common"
 	"github.com/polynetwork/poly/core/types"
 
 	vconfig "github.com/polynetwork/poly/consensus/vbft/config"
@@ -62,141 +61,6 @@ func (this *SyncService) GetCurrentNeoChainSyncHeight(relayChainID uint64) (uint
 		height++ // means the next block header needs to be synced
 	}
 	return height, nil
-}
-
-func (this *SyncService) sendWithdrawalTxn(crossStateProof *sdkcom.MerkleProof, headerToBeVerified *types.Header) error {
-	path, err := hex.DecodeString(crossStateProof.AuditPath)
-	if err != nil {
-		return fmt.Errorf("DecodeString error: %s", err)
-	}
-
-	stateRootValue, err := MerkleProve(path, headerToBeVerified.CrossStateRoot.ToArray())
-	if err != nil {
-		return fmt.Errorf("MerkleProve error: %s", err)
-	}
-
-	toMerkleValue, err := DeserializeMerkleValue(stateRootValue)
-	if err != nil {
-		return fmt.Errorf("DeserializeMerkleValue error: %s", err)
-	}
-
-	if string(toMerkleValue.TxParam.Method) != "unlock" {
-		return nil
-	}
-
-	args := new(TxArgs)
-	err = args.Deserialization(polycommon.NewZeroCopySource(toMerkleValue.TxParam.Args), 32)
-	if err != nil {
-		return fmt.Errorf("args.Deserialization error: %s", err)
-	}
-
-	scriptHash := toMerkleValue.TxParam.ToContract
-	sb := sc.NewScriptBuilder()
-
-	// manual version of sb.MakeInvocationScript, as we need useTailCall to be true
-	err = sb.EmitPushBool(false)
-	if err != nil {
-		return nil
-	}
-	err = sb.EmitPushString("withdraw")
-	if err != nil {
-		return nil
-	}
-	err = sb.EmitAppCall(scriptHash, true) // useTailCall: true
-	if err != nil {
-		return nil
-	}
-
-	script := sb.ToArray()
-
-	tb := tx.NewTransactionBuilder(this.config.NeoJsonRpcUrl)
-	from, err := helper.AddressToScriptHash(this.neoAccount.Address)
-	if err != nil {
-		return fmt.Errorf("Invalid account error: %s", err)
-	}
-
-	// attach contract address as signer
-	attr1 := tx.TransactionAttribute{
-		Usage: tx.Script, // 0x20
-		Data:  scriptHash,
-	}
-
-	// asset to withdraw
-	attr2 := tx.TransactionAttribute{
-		Usage: tx.Hash2,                              // 0xa2
-		Data:  helper.PadRight(args.ToAssetHash, 32), // should be in little endian format
-	}
-
-	attr3 := tx.TransactionAttribute{
-		Usage: tx.Hash4,                            // 0xa4
-		Data:  helper.PadRight(args.ToAddress, 32), // should be in little endian format
-	}
-
-	itxAttrs := []*tx.TransactionAttribute{&attr1, &attr2, &attr3}
-
-	// create an InvocationTransaction
-	sysFee := helper.Fixed8FromFloat64(this.config.NeoSysFee)
-	netFee := helper.Fixed8FromFloat64(this.config.NeoNetFee)
-	itx, err := tb.MakeInvocationTransaction(script, from, itxAttrs, from, sysFee, netFee)
-	if err != nil {
-		return err
-	}
-
-	ioAmount := helper.Fixed8FromFloat64(0.1)
-	inputs, totalPay, err := tb.GetTransactionInputs(from, tx.GasToken, ioAmount)
-	if err != nil {
-		return fmt.Errorf("not enough balance in address: %s", helper.ScriptHashToAddress(from))
-	}
-	itx.Inputs = inputs
-
-	output := tx.NewTransactionOutput(tx.GasToken, totalPay.Sub(ioAmount), from)
-	itx.Outputs = append(itx.Outputs, output)
-
-	err = tx.AddSignature(itx, this.neoAccount.KeyPair)
-	if err != nil {
-		return fmt.Errorf("tx.AddSignature error: %s", err)
-	}
-
-	witnessScriptHash, err := helper.BytesToScriptHash(scriptHash)
-	if err != nil {
-		return fmt.Errorf("witnessScriptHash error: %s", err)
-	}
-
-	witnessInvocationScript, err := hex.DecodeString("0000")
-	if err != nil {
-		return fmt.Errorf("witnessInvocationScript error: %s", err)
-	}
-
-	witness := tx.CreateWitnessWithScriptHash(witnessScriptHash, witnessInvocationScript)
-
-	itx.Witnesses = append(itx.Witnesses, witness)
-
-	rawTxString := itx.RawTransactionString()
-
-	log.Infof("[sendWithdrawalTxn] txHash is: %s", itx.HashString())
-
-	response := this.neoSdk.SendRawTransaction(rawTxString)
-	if response.HasError() {
-		return fmt.Errorf("SendRawTransaction error: %s", response.ErrorResponse.Error.Message)
-	}
-
-	log.Infof("[sendWithdrawalTxn] txn sent!")
-
-	// mark utxo
-	for _, unspent := range itx.Inputs {
-		neoUtxo := db.NeoUtxo{
-			TxId:  unspent.PrevHash.String(),
-			Index: int(unspent.PrevIndex),
-		}
-		sink := common.NewZeroCopySink(nil)
-		neoUtxo.Serialization(sink)
-		err := this.db.PutUtxo(sink.Bytes(), true)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (this *SyncService) shouldRelay(crossStateProof *sdkcom.MerkleProof, headerToBeVerified *types.Header) (bool, error) {
@@ -600,11 +464,6 @@ func (this *SyncService) syncProofToNeo(key string, txHeight, lastSynced uint32)
 		}
 	}
 
-	err = this.sendWithdrawalTxn(crossStateProof, headerToBeVerified)
-	if err != nil {
-		// only log and do not return an error
-		log.Infof("[syncProofToNeo] sendWithdrawalTxn error: %s", err)
-	}
 	//this.waitForNeoBlock()
 	return nil
 }
@@ -797,12 +656,6 @@ func (this *SyncService) retrySyncProofToNeo(v []byte, lastSynced uint32) error 
 		err := this.db.DeleteNeoRetry(v)
 		log.Infof("[retrySyncProofToNeo] delete tx from retry db, height %d, key %s, db key %s", txHeight, key, helper.BytesToHex(v))
 		return fmt.Errorf("[retrySyncProofToNeo] this.db.DeleteNeoRetry error: %s", err)
-	}
-
-	err = this.sendWithdrawalTxn(crossStateProof, headerToBeVerified)
-	if err != nil {
-		// only log and do not return an error
-		log.Infof("[syncProofToNeo] sendWithdrawalTxn error: %s", err)
 	}
 
 	//this.waitForNeoBlock()
