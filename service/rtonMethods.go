@@ -6,6 +6,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/joeqian10/neo-gogogo/helper"
 	"github.com/joeqian10/neo-gogogo/rpc/models"
@@ -19,10 +24,6 @@ import (
 	"github.com/polynetwork/neo-relayer/log"
 	"github.com/polynetwork/poly/common"
 	"github.com/polynetwork/poly/core/types"
-	"sort"
-	"strconv"
-	"strings"
-	"time"
 
 	vconfig "github.com/polynetwork/poly/consensus/vbft/config"
 )
@@ -351,14 +352,6 @@ func (this *SyncService) syncProofToNeo(key string, txHeight, lastSynced uint32)
 	log.Infof("sourceTxHash: " + helper.BytesToHex(toMerkleValue.TxParam.TxHash))
 	log.Infof("toContract: " + helper.BytesToHex(toMerkleValue.TxParam.ToContract))
 	log.Infof("method: " + helper.BytesToHex(toMerkleValue.TxParam.Method))
-	//log.Infof("TxParamArgs: " + helper.BytesToHex(toMerkleValue.TxParam.Args))
-	toAssetHash, toAddress, amount, err := DeserializeArgs(toMerkleValue.TxParam.Args)
-	if err != nil {
-		return fmt.Errorf("[syncProofToNeo] DeserializeArgs error: %s", err)
-	}
-	log.Infof("toAssetHash: " + helper.BytesToHex(toAssetHash))
-	log.Infof("toAddress: " + helper.BytesToHex(toAddress))
-	log.Infof("amount: " + amount.String())
 
 	// build script
 	scriptBuilder := sc.NewScriptBuilder()
