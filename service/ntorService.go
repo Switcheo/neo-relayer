@@ -2,25 +2,26 @@ package service
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/joeqian10/neo-gogogo/helper"
 	"github.com/polynetwork/neo-relayer/log"
-	"time"
 )
 
 //NeoToRelay ...
 func (this *SyncService) NeoToRelay() {
 	this.relaySyncHeight = this.config.RelaySyncHeight // means the next height to be synced
-	if this.relaySyncHeight == 0 { // means no block header has been synced
+	if this.relaySyncHeight == 0 {                     // means no block header has been synced
 		this.neoNextConsensus = ""
 	} else {
-		for j:= 0; j<5; j++{
-			response := this.neoSdk.GetBlockByIndex(this.relaySyncHeight-1) // get the last synced height
+		for j := 0; j < 5; j++ {
+			response := this.neoSdk.GetBlockByIndex(this.relaySyncHeight - 1) // get the last synced height
 			if response.HasError() {
 				log.Errorf("[NeoToRelay] neoSdk.GetBlockByIndex error: %s", response.Error.Message)
 			}
 			block := response.Result
 			if block.Hash == "" {
-				if j== 4 {
+				if j == 4 {
 					log.Errorf("[NeoToRelay] rpc request failed 5 times")
 					break
 				}
@@ -100,7 +101,7 @@ func (this *SyncService) neoToRelay(m, n uint32) error {
 							if notification.State.Type != "Array" {
 								return fmt.Errorf("[neoToRelay] notification.State.Type error: Type is not Array")
 							}
-							states := notification.State.Value // []models.RpcContractParameter
+							states := notification.State.Value                               // []models.RpcContractParameter
 							if states[0].Value != "43726f7373436861696e4c6f636b4576656e74" { // "CrossChainLockEvent"
 								continue
 							}
@@ -136,6 +137,7 @@ func (this *SyncService) neoToRelay(m, n uint32) error {
 							} else {
 								passed = currentRelayChainSyncHeight
 							}
+							log.Infof("[neoToRelay] syncProofToRelay tx: %s", tx.Txid)
 							err = this.syncProofToRelay(key, passed)
 							if err != nil {
 								log.Errorf("--------------------------------------------------")
