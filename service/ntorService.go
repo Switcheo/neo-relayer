@@ -81,7 +81,7 @@ func (this *SyncService) neoToRelay(m, n uint32) error {
 			// check if this block contains cross chain tx
 			txs := blk.Tx
 			for _, tx := range txs {
-				log.Infof("[neoToRelay] tx: %s", tx.Txid)
+				// log.Infof("[neoToRelay] tx: %s", tx.Txid)
 				if tx.Type != "InvocationTransaction" {
 					continue
 				}
@@ -100,7 +100,7 @@ func (this *SyncService) neoToRelay(m, n uint32) error {
 						u, _ := helper.UInt160FromString(notification.Contract)
 						// outer loop confirm tx is a cross chain tx
 						if helper.BytesToHex(u.Bytes()) == this.config.NeoCCMC {
-							log.Infof("[neoToRelay] CCMC tx: %s", tx.Txid)
+							// log.Infof("[neoToRelay] CCMC tx: %s", tx.Txid)
 							if notification.State.Type != "Array" {
 								return fmt.Errorf("[neoToRelay] notification.State.Type error: Type is not Array")
 							}
