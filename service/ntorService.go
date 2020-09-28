@@ -117,7 +117,7 @@ func (this *SyncService) neoToRelay(m, n uint32) error {
 										if index < len(notifications)-1 {
 											continue
 										}
-										log.Infof("This cross chain tx is not for this specific contract.")
+										log.Infof("This cross chain tx is not for this specific contract: %s, %s, %s", tx.Txid, helper.BytesToHex(v.Bytes()), this.config.SpecificContract)
 										this.relaySyncHeight++
 										return nil
 									} else {
