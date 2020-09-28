@@ -96,6 +96,7 @@ func (this *SyncService) neoToRelay(m, n uint32) error {
 					}
 					notifications := execution.Notifications
 					for _, notification := range execution.Notifications {
+						shouldSyncProofToRelay := true
 						u, _ := helper.UInt160FromString(notification.Contract)
 						// outer loop confirm tx is a cross chain tx
 						if helper.BytesToHex(u.Bytes()) == this.config.NeoCCMC {
@@ -120,32 +121,34 @@ func (this *SyncService) neoToRelay(m, n uint32) error {
 											continue
 										}
 										log.Infof("This cross chain tx is not for this specific contract: %s, %s, %s", tx.Txid, helper.BytesToHex(v.Bytes()), this.config.SpecificContract)
-										this.relaySyncHeight++
-										return nil
+										shouldSyncProofToRelay = false
 									} else {
 										break
 									}
 								}
 							}
-							key := states[4].Value // hexstring for storeKey: 0102 + toChainId + toRequestId, like 01020501
-							//get relay chain sync height
-							currentRelayChainSyncHeight, err := this.GetCurrentRelayChainSyncHeight(this.config.NeoChainID)
-							if err != nil {
-								return fmt.Errorf("[neoToRelay] GetCurrentMainChainSyncHeight error: %s", err)
-							}
-							var passed uint32
-							if i >= currentRelayChainSyncHeight {
-								passed = i
-							} else {
-								passed = currentRelayChainSyncHeight
-							}
-							log.Infof("[neoToRelay] syncProofToRelay tx: %s", tx.Txid)
-							err = this.syncProofToRelay(key, passed)
-							if err != nil {
-								log.Errorf("--------------------------------------------------")
-								log.Errorf("[neoToRelay] syncProofToRelay error: %s", err)
-								log.Errorf("neoHeight: %d, neoTxId: %s", i, tx.Txid)
-								log.Errorf("--------------------------------------------------")
+
+							if shouldSyncProofToRelay {
+								key := states[4].Value // hexstring for storeKey: 0102 + toChainId + toRequestId, like 01020501
+								//get relay chain sync height
+								currentRelayChainSyncHeight, err := this.GetCurrentRelayChainSyncHeight(this.config.NeoChainID)
+								if err != nil {
+									return fmt.Errorf("[neoToRelay] GetCurrentMainChainSyncHeight error: %s", err)
+								}
+								var passed uint32
+								if i >= currentRelayChainSyncHeight {
+									passed = i
+								} else {
+									passed = currentRelayChainSyncHeight
+								}
+								log.Infof("[neoToRelay] syncProofToRelay tx: %s", tx.Txid)
+								err = this.syncProofToRelay(key, passed)
+								if err != nil {
+									log.Errorf("--------------------------------------------------")
+									log.Errorf("[neoToRelay] syncProofToRelay error: %s", err)
+									log.Errorf("neoHeight: %d, neoTxId: %s", i, tx.Txid)
+									log.Errorf("--------------------------------------------------")
+								}
 							}
 						}
 					} // notification
