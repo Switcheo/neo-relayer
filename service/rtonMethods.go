@@ -262,7 +262,7 @@ func (this *SyncService) syncProofToNeo(key string, txHeight, lastSynced uint32)
 	log.Infof("txProofHeader: " + helper.BytesToHex(headerToBeVerified.GetMessage()))
 
 	// check constraints
-	if this.config.SpecificContract != "" { // if empty, relay everything
+	if len(this.config.SpecificContracts) != 0 { // if empty, relay everything
 		stateRootValue, err := MerkleProve(path, headerToBeVerified.CrossStateRoot.ToArray())
 		if err != nil {
 			return fmt.Errorf("[syncProofToNeo] MerkleProve error: %s", err)
@@ -272,7 +272,17 @@ func (this *SyncService) syncProofToNeo(key string, txHeight, lastSynced uint32)
 		if err != nil {
 			return fmt.Errorf("[syncProofToNeo] DeserializeMerkleValue error: %s", err)
 		}
-		if helper.BytesToHex(toMerkleValue.TxParam.ToContract) != this.config.SpecificContract {
+
+		matchesSpecificContract := false
+
+		for _, specificContract := range this.config.SpecificContracts {
+			if helper.BytesToHex(toMerkleValue.TxParam.ToContract) == specificContract {
+				matchesSpecificContract = true
+				break
+			}
+		}
+
+		if !matchesSpecificContract {
 			log.Infof(helper.BytesToHex(toMerkleValue.TxParam.ToContract))
 			log.Infof("This cross chain tx is not for this specific contract.")
 			return nil

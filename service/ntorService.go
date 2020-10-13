@@ -96,7 +96,7 @@ func (this *SyncService) neoToRelay(m, n uint32) error {
 					}
 					notifications := execution.Notifications
 					for _, notification := range execution.Notifications {
-						shouldSyncProofToRelay := true
+						shouldSyncProofToRelay := false
 						u, _ := helper.UInt160FromString(notification.Contract)
 						// outer loop confirm tx is a cross chain tx
 						if helper.BytesToHex(u.Bytes()) == this.config.NeoCCMC {
@@ -112,18 +112,18 @@ func (this *SyncService) neoToRelay(m, n uint32) error {
 								return fmt.Errorf("[neoToRelay] notification.State.Value error: Wrong length of states")
 							}
 
-							if this.config.SpecificContract != "" { // when empty, relay everything
-								for index, ntf := range notifications {
+							if len(this.config.SpecificContracts) != 0 { // when empty, relay everything
+								for _, ntf := range notifications {
 									// inner loop check it is for this specific contract
 									v, _ := helper.UInt160FromString(ntf.Contract)
-									if helper.BytesToHex(v.Bytes()) != this.config.SpecificContract {
-										if index < len(notifications)-1 {
-											continue
+									for _, specificContract := range this.config.SpecificContracts {
+										if helper.BytesToHex(v.Bytes()) == specificContract {
+											shouldSyncProofToRelay = true
+											break
 										}
-										log.Infof("This cross chain tx is not for this specific contract: %s, %s, %s", tx.Txid, helper.BytesToHex(v.Bytes()), this.config.SpecificContract)
-										shouldSyncProofToRelay = false
-									} else {
-										break
+									}
+									if !shouldSyncProofToRelay {
+										log.Infof("This cross chain tx is not for this specific contract: %s, %s, %s", tx.Txid, helper.BytesToHex(v.Bytes()))
 									}
 								}
 							}

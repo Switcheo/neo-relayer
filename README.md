@@ -35,7 +35,7 @@ Before running, you need feed the configuration file `config.json`.
   "NeoJsonRpcUrl": "http://seed10.ngd.network:20332",               // neo node rpc port
   "NeoChainID": 5,                                                  // neo chain id
   "NeoCCMC": "07946635d87e4120164835391e33a114135b69e1",            // neo ccmc script hash in little endian
-  "SpecificContract": "19cd39b09acc059ef6cc92bf2aff80baae2533d2",   // the specific contract you want to monitor, eg. lock proxy, if empty, everything will be relayed
+  "SpecificContracts": ["19cd39b09acc059ef6cc92bf2aff80baae2533d2]",   // the specific contracts you want to monitor, eg. lock proxy, if empty, everything will be relayed
   "NeoSysFee": 2,                                                   // extra system fee for neo chain
   "NeoNetFee": 0.02,                                                // extra network fee for neo chain
   "ScanInterval": 2,                                                // interval for scanning chains
