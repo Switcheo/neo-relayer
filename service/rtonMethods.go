@@ -685,7 +685,7 @@ func (this *SyncService) GetTransactionInputs(from helper.UInt160, assetId helpe
 	if available.LessThan(amount) {
 		return nil, helper.Zero, fmt.Errorf("not enough balance in address: %s", helper.ScriptHashToAddress(from))
 	}
-	sort.Sort(sort.Reverse(models.UnspentSlice(unspents))) // sort in decreasing order
+	sort.Sort(models.UnspentSlice(unspents)) // sort in ascending order
 	var i int = 0
 	var a float64 = helper.Fixed8ToFloat64(amount)
 	var inputs []*tx.CoinReference = []*tx.CoinReference{}
