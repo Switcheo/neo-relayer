@@ -1,8 +1,8 @@
 {
   "RelayJsonRpcUrl": "http://18.139.35.255:20336",
   "RelayChainID": 5,
-  "WalletFile": "./wallet_mainnet.dat",
-  "NeoWalletFile": "./neo-wallet.mainnet.json",
+  "WalletFile": "./wallet_test.dat",
+  "NeoWalletFile": "neo_wallet.json",
   "NeoJsonRpcUrls": [
     "https://seed1.switcheo.network",
     "http://seed10.ngd.network:21332"

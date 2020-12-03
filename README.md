@@ -30,7 +30,7 @@ Before running, you need feed the configuration file `config.json`.
   "RelayChainID": 0,                                                // poly chain id
   "WalletFile": "./wallet.dat",                                     // poly chain wallet file
   "NeoWalletFile": "neo_test.json",                                 // neo chain wallet file
-  "NeoJsonRpcUrl": "http://seed10.ngd.network:20332",               // neo node rpc port
+  "NeoJsonRpcUrls": ["http://seed10.ngd.network:20332"],            // neo node rpc urls (can specify multiple to broadcast to multiple nodes)
   "NeoChainID": 5,                                                  // neo chain id
   "NeoCCMC": "07946635d87e4120164835391e33a114135b69e1",            // neo ccmc script hash in little endian
   "SpecificContract": "19cd39b09acc059ef6cc92bf2aff80baae2533d2",   // the specific contract you want to monitor, eg. lock proxy, if empty, everything will be relayed

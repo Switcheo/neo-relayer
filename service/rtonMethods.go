@@ -37,7 +37,7 @@ const (
 // GetCurrentNeoChainSyncHeight
 func (this *SyncService) GetCurrentNeoChainSyncHeight(relayChainID uint64) (uint64, error) {
 	arg := models.NewInvokeFunctionStackArg("Integer", fmt.Sprint(relayChainID))
-	response := this.neoSdk.InvokeFunction("0x"+helper.ReverseString(this.config.NeoCCMC), GET_CURRENT_HEIGHT, helper.ZeroScriptHashString, arg)
+	response := this.GetFirstNeoRpcClient().InvokeFunction("0x"+helper.ReverseString(this.config.NeoCCMC), GET_CURRENT_HEIGHT, helper.ZeroScriptHashString, arg)
 	if response.HasError() || response.Result.State == "FAULT" {
 		return 0, fmt.Errorf("[GetCurrentNeoChainSyncHeight] GetCurrentHeight error: %s", "Engine faulted! "+response.Error.Message)
 	}
@@ -112,7 +112,7 @@ func (this *SyncService) changeBookKeeper(block *types.Block) error {
 
 	script := sb.ToArray()
 
-	tb := tx.NewTransactionBuilder(this.config.NeoJsonRpcUrl)
+	tb := tx.NewTransactionBuilder(this.config.NeoJsonRpcUrls[0])
 	from, err := helper.AddressToScriptHash(this.neoAccount.Address)
 	// create an InvocationTransaction
 	sysFee := helper.Fixed8FromFloat64(this.config.NeoSysFee)
@@ -130,7 +130,7 @@ func (this *SyncService) changeBookKeeper(block *types.Block) error {
 	rawTxString := itx.RawTransactionString()
 	log.Infof(rawTxString)
 	// send the raw transaction
-	response := this.neoSdk.SendRawTransaction(rawTxString)
+	response := this.GetFirstNeoRpcClient().SendRawTransaction(rawTxString)
 	if response.HasError() {
 		return fmt.Errorf("[changeBookKeeper] SendRawTransaction error: %s, "+
 			"unsigned header hex string: %s, "+
@@ -191,7 +191,7 @@ func (this *SyncService) syncHeaderToNeo(height uint32) error {
 
 	script := sb.ToArray()
 
-	tb := tx.NewTransactionBuilder(this.config.NeoJsonRpcUrl)
+	tb := tx.NewTransactionBuilder(this.config.NeoJsonRpcUrls[0])
 	from, err := helper.AddressToScriptHash(this.neoAccount.Address)
 	// create an InvocationTransaction
 	sysFee := helper.Fixed8FromFloat64(this.config.NeoSysFee)
@@ -210,7 +210,7 @@ func (this *SyncService) syncHeaderToNeo(height uint32) error {
 	rawTxString := itx.RawTransactionString()
 
 	// send the raw transaction
-	response := this.neoSdk.SendRawTransaction(rawTxString)
+	response := this.GetFirstNeoRpcClient().SendRawTransaction(rawTxString)
 	if response.HasError() {
 		return fmt.Errorf("[syncHeaderToNeo] SendRawTransaction error: %s, "+
 			"unsigned header hex string: %s, "+
@@ -414,7 +414,7 @@ func (this *SyncService) syncProofToNeo(key string, txHeight, lastSynced uint32)
 	rawTxString := itx.RawTransactionString()
 
 	// send the raw transaction
-	response := this.neoSdk.SendRawTransaction(rawTxString)
+	response := this.GetFirstNeoRpcClient().SendRawTransaction(rawTxString)
 	if response.HasError() {
 		err = this.db.PutNeoRetry(sink.Bytes())
 		if err != nil {
@@ -587,7 +587,7 @@ func (this *SyncService) retrySyncProofToNeo(v []byte, lastSynced uint32) error 
 	rawTxString := itx.RawTransactionString()
 
 	// send the raw transaction
-	response := this.neoSdk.SendRawTransaction(rawTxString)
+	response := this.GetFirstNeoRpcClient().SendRawTransaction(rawTxString)
 	if response.HasError() {
 		if strings.Contains(response.ErrorResponse.Error.Message, "Block or transaction validation failed") {
 			log.Infof("[retrySyncProofToNeo] remain tx in retry db, SendRawTransaction: height %d, key %s, db key %s", txHeight, key, helper.BytesToHex(v))
@@ -713,7 +713,7 @@ func (this *SyncService) GetTransactionInputs(from helper.UInt160, assetId helpe
 }
 
 func (this *SyncService) GetGasConsumed(script []byte, checkWitnessHashes string) (*helper.Fixed8, error) {
-	response := this.neoSdk.InvokeScript(helper.BytesToHex(script), checkWitnessHashes)
+	response := this.GetFirstNeoRpcClient().InvokeScript(helper.BytesToHex(script), checkWitnessHashes)
 	if response.HasError() {
 		return nil, fmt.Errorf(response.ErrorResponse.Error.Message)
 	}
@@ -735,7 +735,7 @@ func (this *SyncService) GetGasConsumed(script []byte, checkWitnessHashes string
 }
 
 func (this *SyncService) GetBalance(account helper.UInt160, assetId helper.UInt256) ([]models.Unspent, helper.Fixed8, error) {
-	response := this.neoSdk.GetUnspents(helper.ScriptHashToAddress(account))
+	response := this.GetFirstNeoRpcClient().GetUnspents(helper.ScriptHashToAddress(account))
 	if response.HasError() {
 		return nil, helper.Zero, fmt.Errorf(response.ErrorResponse.Error.Message)
 	}

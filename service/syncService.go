@@ -17,7 +17,7 @@ type SyncService struct {
 	relaySyncHeight uint32
 
 	neoAccount       *wallet.Account
-	neoSdk           *neoRpc.RpcClient
+	neoRpcClients    []*neoRpc.RpcClient
 	neoSyncHeight    uint32
 	neoNextConsensus string
 
@@ -26,7 +26,7 @@ type SyncService struct {
 }
 
 // NewSyncService ...
-func NewSyncService(acct *rsdk.Account, relaySdk *rsdk.PolySdk, neoAccount *wallet.Account, neoSdk *neoRpc.RpcClient) *SyncService {
+func NewSyncService(acct *rsdk.Account, relaySdk *rsdk.PolySdk, neoAccount *wallet.Account, neoRpcClients []*neoRpc.RpcClient) *SyncService {
 	if !checkIfExist(config.DefConfig.DBPath) {
 		os.Mkdir(config.DefConfig.DBPath, os.ModePerm)
 	}
@@ -39,10 +39,10 @@ func NewSyncService(acct *rsdk.Account, relaySdk *rsdk.PolySdk, neoAccount *wall
 		relayAccount: acct,
 		relaySdk:     relaySdk,
 
-		neoAccount: neoAccount,
-		neoSdk:     neoSdk,
-		db:         boltDB,
-		config:     config.DefConfig,
+		neoAccount:    neoAccount,
+		neoRpcClients: neoRpcClients,
+		db:            boltDB,
+		config:        config.DefConfig,
 	}
 	return syncSvr
 }
@@ -53,6 +53,11 @@ func (this *SyncService) Run() {
 	go this.RelayToNeoRetry()
 	go this.NeoToRelay()
 	go this.NeoToRelayCheckAndRetry()
+}
+
+// GetFirstNeoRpcClient returns the first rpc client initialized
+func (this SyncService) GetFirstNeoRpcClient() *neoRpc.RpcClient {
+	return this.neoRpcClients[0]
 }
 
 func checkIfExist(dir string) bool {

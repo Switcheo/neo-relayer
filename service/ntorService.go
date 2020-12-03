@@ -14,9 +14,9 @@ func (this *SyncService) NeoToRelay() {
 		this.neoNextConsensus = ""
 	} else {
 		for j:= 0; j<5; j++{
-			response := this.neoSdk.GetBlockByIndex(this.relaySyncHeight-1) // get the last synced height
+			response := this.GetFirstNeoRpcClient().GetBlockByIndex(this.relaySyncHeight-1) // get the last synced height
 			if response.HasError() {
-				log.Errorf("[NeoToRelay] neoSdk.GetBlockByIndex error: %s", response.Error.Message)
+				log.Errorf("[NeoToRelay] neoRpcClients.GetBlockByIndex error: %s", response.Error.Message)
 			}
 			block := response.Result
 			if block.Hash == "" {
@@ -34,9 +34,9 @@ func (this *SyncService) NeoToRelay() {
 		//get current Neo BlockHeight, 5 times rpc
 		var currentNeoHeight uint32
 		for j := 0; j < 5; j++ {
-			response := this.neoSdk.GetBlockCount()
+			response := this.GetFirstNeoRpcClient().GetBlockCount()
 			if response.HasError() {
-				log.Errorf("[NeoToRelay] neoSdk.GetBlockCount error: ", response.Error.Message)
+				log.Errorf("[NeoToRelay] neoRpcClients.GetBlockCount error: ", response.Error.Message)
 				break
 			}
 			if response.Result == 0 {
@@ -64,9 +64,9 @@ func (this *SyncService) neoToRelay(m, n uint32) error {
 		//Sync key header of NEO, if block.nextConsensus is changed.
 		//request block from NEO, try rpc request 5 times, if failed, continue
 		for j := 0; j < 5; j++ {
-			response := this.neoSdk.GetBlockByIndex(i)
+			response := this.GetFirstNeoRpcClient().GetBlockByIndex(i)
 			if response.HasError() {
-				return fmt.Errorf("[neoToRelay] neoSdk.GetBlockByIndex error: %s", response.Error.Message)
+				return fmt.Errorf("[neoToRelay] neoRpcClients.GetBlockByIndex error: %s", response.Error.Message)
 			}
 
 			blk := response.Result
@@ -97,9 +97,9 @@ func (this *SyncService) neoToRelay(m, n uint32) error {
 				if tx.Type != "InvocationTransaction" {
 					continue
 				}
-				response := this.neoSdk.GetApplicationLog(tx.Txid)
+				response := this.GetFirstNeoRpcClient().GetApplicationLog(tx.Txid)
 				if response.HasError() {
-					return fmt.Errorf("[neoToRelay] neoSdk.GetApplicationLog error: %s", response.Error.Message)
+					return fmt.Errorf("[neoToRelay] neoRpcClients.GetApplicationLog error: %s", response.Error.Message)
 				}
 
 				for _, execution := range response.Result.Executions {
