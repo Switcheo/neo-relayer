@@ -22,13 +22,14 @@ type Config struct {
 	NeoJsonRpcUrls   []string
 	NeoChainID       uint64
 	NeoCCMC          string // little endian string
-	SpecificContract string // the specific contract which is monitored
+	SpecificContracts []string // the specific contracts to monitor
 	NeoSysFee        float64
 	NeoNetFee        float64
 
-	ScanInterval  uint64
-	RetryInterval uint64
-	DBPath        string
+	ScanInterval     uint64
+	RetryInterval    uint64
+	DBPath           string
+	ChangeBookkeeper bool
 
 	NeoSyncHeight   uint32
 	RelaySyncHeight uint32

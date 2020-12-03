@@ -1,3 +1,5 @@
+neo-relayer
+.idea/*
 .vscode/launch.json
 .idea/Relayer.iml
 .idea/misc.xml
@@ -7,10 +9,9 @@
 boltdb/*
 Logs/*
 
-.idea
-neo-relayer
 neo_wallet.json
 wallet_test.dat
 neo-wallet.mainnet.json
 wallet_mainnet.dat
 config.mainnet.json
+

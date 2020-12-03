@@ -6,6 +6,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/joeqian10/neo-gogogo/helper"
 	"github.com/joeqian10/neo-gogogo/rpc/models"
@@ -19,10 +24,6 @@ import (
 	"github.com/polynetwork/neo-relayer/log"
 	"github.com/polynetwork/poly/common"
 	"github.com/polynetwork/poly/core/types"
-	"sort"
-	"strconv"
-	"strings"
-	"time"
 
 	vconfig "github.com/polynetwork/poly/consensus/vbft/config"
 )
@@ -261,7 +262,7 @@ func (this *SyncService) syncProofToNeo(key string, txHeight, lastSynced uint32)
 	log.Infof("txProofHeader: " + helper.BytesToHex(headerToBeVerified.GetMessage()))
 
 	// check constraints
-	if this.config.SpecificContract != "" { // if empty, relay everything
+	if len(this.config.SpecificContracts) != 0 { // if empty, relay everything
 		stateRootValue, err := MerkleProve(path, headerToBeVerified.CrossStateRoot.ToArray())
 		if err != nil {
 			return fmt.Errorf("[syncProofToNeo] MerkleProve error: %s", err)
@@ -271,7 +272,17 @@ func (this *SyncService) syncProofToNeo(key string, txHeight, lastSynced uint32)
 		if err != nil {
 			return fmt.Errorf("[syncProofToNeo] DeserializeMerkleValue error: %s", err)
 		}
-		if helper.BytesToHex(toMerkleValue.TxParam.ToContract) != this.config.SpecificContract {
+
+		matchesSpecificContract := false
+
+		for _, specificContract := range this.config.SpecificContracts {
+			if helper.BytesToHex(toMerkleValue.TxParam.ToContract) == specificContract {
+				matchesSpecificContract = true
+				break
+			}
+		}
+
+		if !matchesSpecificContract {
 			log.Infof(helper.BytesToHex(toMerkleValue.TxParam.ToContract))
 			log.Infof("This cross chain tx is not for this specific contract.")
 			return nil
@@ -351,14 +362,6 @@ func (this *SyncService) syncProofToNeo(key string, txHeight, lastSynced uint32)
 	log.Infof("sourceTxHash: " + helper.BytesToHex(toMerkleValue.TxParam.TxHash))
 	log.Infof("toContract: " + helper.BytesToHex(toMerkleValue.TxParam.ToContract))
 	log.Infof("method: " + helper.BytesToHex(toMerkleValue.TxParam.Method))
-	//log.Infof("TxParamArgs: " + helper.BytesToHex(toMerkleValue.TxParam.Args))
-	toAssetHash, toAddress, amount, err := DeserializeArgs(toMerkleValue.TxParam.Args)
-	if err != nil {
-		return fmt.Errorf("[syncProofToNeo] DeserializeArgs error: %s", err)
-	}
-	log.Infof("toAssetHash: " + helper.BytesToHex(toAssetHash))
-	log.Infof("toAddress: " + helper.BytesToHex(toAddress))
-	log.Infof("amount: " + amount.String())
 
 	// build script
 	scriptBuilder := sc.NewScriptBuilder()
@@ -384,13 +387,6 @@ func (this *SyncService) syncProofToNeo(key string, txHeight, lastSynced uint32)
 	sysFee := helper.Fixed8FromFloat64(this.config.NeoSysFee)
 	netFee := helper.Fixed8FromFloat64(this.config.NeoNetFee)
 	itx, err := this.MakeInvocationTransaction(script, from, nil, from, sysFee, netFee)
-
-	////---------------------------------------
-	//if itx.Gas.Equal(helper.Zero) {
-	//	log.Infof("tx already done, height %d, key %s ", txHeight, key)
-	//	return nil
-	//}
-	////----------------------------------------
 
 	if err != nil {
 		if strings.Contains(err.Error(), "not enough balance in address") {
@@ -438,7 +434,7 @@ func (this *SyncService) syncProofToNeo(key string, txHeight, lastSynced uint32)
 			return err
 		}
 	}
-	//this.waitForNeoBlock()
+
 	return nil
 }
 
@@ -689,7 +685,7 @@ func (this *SyncService) GetTransactionInputs(from helper.UInt160, assetId helpe
 	if available.LessThan(amount) {
 		return nil, helper.Zero, fmt.Errorf("not enough balance in address: %s", helper.ScriptHashToAddress(from))
 	}
-	sort.Sort(sort.Reverse(models.UnspentSlice(unspents))) // sort in decreasing order
+	sort.Sort(models.UnspentSlice(unspents)) // sort in ascending order
 	var i int = 0
 	var a float64 = helper.Fixed8ToFloat64(amount)
 	var inputs []*tx.CoinReference = []*tx.CoinReference{}
@@ -717,15 +713,15 @@ func (this *SyncService) GetGasConsumed(script []byte, checkWitnessHashes string
 	if response.HasError() {
 		return nil, fmt.Errorf(response.ErrorResponse.Error.Message)
 	}
-	if response.Result.State == "FAULT" { // CNEO case
-		result := helper.Fixed8FromInt64(10)
+	if response.Result.State == "FAULT" { // CNEO case, use ScriptContainer in contract will cause engine fault
+		result := helper.Fixed8FromInt64(0)
 		return &result, nil
 	}
 	gasConsumed, err := helper.Fixed8FromString(response.Result.GasConsumed)
 	if err != nil {
 		return nil, err
 	}
-	gas := gasConsumed.Sub(helper.Fixed8FromInt64(10))
+	gas := gasConsumed.Sub(helper.Fixed8FromInt64(50))
 	if gas.LessThan(helper.Zero) || gas.Equal(helper.Zero) {
 		return &helper.Zero, nil
 	} else {
@@ -779,7 +775,14 @@ func (this *SyncService) GetBalance(account helper.UInt160, assetId helper.UInt2
 }
 
 func (this *SyncService) waitForNeoBlock() {
-	time.Sleep(time.Duration(15) * time.Second)
+	response := this.GetFirstNeoRpcClient().GetBlockCount()
+	currentNeoHeight := uint32(response.Result - 1)
+	newNeoHeight := currentNeoHeight
+	for currentNeoHeight == newNeoHeight {
+		time.Sleep(time.Duration(15) * time.Second)
+		newResponse := this.GetFirstNeoRpcClient().GetBlockCount()
+		newNeoHeight = uint32(newResponse.Result - 1)
+	}
 }
 
 func getRelayUncompressedKey(key keypair.PublicKey) []byte {
