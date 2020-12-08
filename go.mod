@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/boltdb/bolt v1.3.1
+	github.com/br0xen/boltbrowser v0.0.0-20200408202924-14bd1cdd41fd // indirect
 	github.com/btcsuite/btcd v0.20.1-beta
 	github.com/joeqian10/neo-gogogo v0.0.0-20200908064136-cd18900715ef
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect

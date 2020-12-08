@@ -412,8 +412,8 @@ func (this *SyncService) syncProofToNeo(key string, txHeight, lastSynced uint32)
 
 	// send the raw transaction
 	log.Infof("[syncProofToNeo] Broadcasting txHash: %s", itx.HashString())
-	errResponse := this.SendITxToMultipleNEONodes(itx)
-	if errResponse != nil && errResponse.HasError() {
+	success, errResponse := this.SendITxToMultipleNEONodes(itx)
+	if !success && errResponse.HasError() {
 		err = this.db.PutNeoRetry(sink.Bytes())
 		if err != nil {
 			return fmt.Errorf("[syncProofToRelay] this.db.PutNeoRetry error: %s", err)
@@ -453,6 +453,7 @@ func (this *SyncService) retrySyncProofToNeo(v []byte, lastSynced uint32) error 
 	// get the proof of the cross chain tx
 	crossStateProof, err := this.relaySdk.ClientMgr.GetCrossStatesProof(txHeight, key)
 	if err != nil {
+		log.Error("wtf", crossStateProof)
 		return fmt.Errorf("[retrySyncProofToNeo] GetCrossStatesProof error: %s", err)
 	}
 	path, err := hex.DecodeString(crossStateProof.AuditPath)
@@ -586,8 +587,8 @@ func (this *SyncService) retrySyncProofToNeo(v []byte, lastSynced uint32) error 
 
 	// send the raw transaction
 	log.Infof("[retrySyncProofToNeo] Broadcasting txHash: %s", itx.HashString())
-	errResponse := this.SendITxToMultipleNEONodes(itx)
-	if errResponse != nil && errResponse.HasError() {
+	success, errResponse := this.SendITxToMultipleNEONodes(itx)
+	if !success && errResponse.HasError() {
 		if strings.Contains(errResponse.ErrorResponse.Error.Message, "Block or transaction validation failed") {
 			log.Infof("[retrySyncProofToNeo] remain tx in retry db, SendRawTransaction: height %d, key %s, db key %s", txHeight, key, helper.BytesToHex(v))
 			return nil
@@ -791,10 +792,10 @@ func (this *SyncService) waitForNeoBlock() {
 // SendITxToMultipleNEONodes sends itx to multiple nodes listed in config
 // Returns nil if any of the tx was sent successfully without errors
 // Else returns the first response containing error
-func (this *SyncService) SendITxToMultipleNEONodes(itx *tx.InvocationTransaction) (errorResponse *rpc.SendRawTransactionResponse) {
-	log.Infof("[SendTxToMultipleNEONodes] txHash: %s", itx.HashString())
+func (this *SyncService) SendITxToMultipleNEONodes(itx *tx.InvocationTransaction) (success bool, errorResponse *rpc.SendRawTransactionResponse) {
+	log.Infof("[SendITxToMultipleNEONodes] txHash: %s", itx.HashString())
 	rawTxString := itx.RawTransactionString()
-	isSuccessSend := false
+	success = false
 	for _, rpcClient := range this.neoRpcClients {
 		log.Info("Sending to: ", rpcClient.Endpoint.String())
 		response := rpcClient.SendRawTransaction(rawTxString)
@@ -803,14 +804,10 @@ func (this *SyncService) SendITxToMultipleNEONodes(itx *tx.InvocationTransaction
 			errorResponse = &response
 		} else {
 			log.Info("Sending Succeeded ")
-			isSuccessSend = true
+			success = true
 		}
 	}
-	if isSuccessSend {
-		return nil
-	} else {
-		return
-	}
+	return
 }
 
 func getRelayUncompressedKey(key keypair.PublicKey) []byte {
