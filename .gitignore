@@ -9,7 +9,7 @@ neo-relayer
 boltdb/*
 Logs/*
 
-neo_wallet.json
+neo_wallet_mainnet_test.json
 wallet_test.dat
 neo-wallet.mainnet.json
 wallet_mainnet.dat

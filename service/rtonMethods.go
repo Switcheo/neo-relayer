@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/joeqian10/neo-gogogo/rpc"
 	"sort"
 	"strconv"
 	"strings"
@@ -410,15 +411,16 @@ func (this *SyncService) syncProofToNeo(key string, txHeight, lastSynced uint32)
 	rawTxString := itx.RawTransactionString()
 
 	// send the raw transaction
-	response := this.GetFirstNeoRpcClient().SendRawTransaction(rawTxString)
-	if response.HasError() {
+	log.Infof("[syncProofToNeo] Broadcasting txHash: %s", itx.HashString())
+	errResponse := this.SendITxToMultipleNEONodes(itx)
+	if errResponse != nil && errResponse.HasError() {
 		err = this.db.PutNeoRetry(sink.Bytes())
 		if err != nil {
 			return fmt.Errorf("[syncProofToRelay] this.db.PutNeoRetry error: %s", err)
 		}
 		log.Errorf("[syncProofToNeo] put tx into retry db, height %d, key %s, db key %s", txHeight, key, helper.BytesToHex(sink.Bytes()))
 		return fmt.Errorf("[syncProofToNeo] SendRawTransaction error: %s, path(cp1): %s, cp2: %d, syncProofToNeo RawTransactionString: %s",
-			response.ErrorResponse.Error.Message, helper.BytesToHex(path), int64(blockHeightReliable), rawTxString)
+			errResponse.ErrorResponse.Error.Message, helper.BytesToHex(path), int64(blockHeightReliable), rawTxString)
 	}
 	log.Infof("[syncProofToNeo] syncProofToNeo txHash is: %s", itx.HashString())
 	// mark utxo
@@ -583,21 +585,22 @@ func (this *SyncService) retrySyncProofToNeo(v []byte, lastSynced uint32) error 
 	rawTxString := itx.RawTransactionString()
 
 	// send the raw transaction
-	response := this.GetFirstNeoRpcClient().SendRawTransaction(rawTxString)
-	if response.HasError() {
-		if strings.Contains(response.ErrorResponse.Error.Message, "Block or transaction validation failed") {
+	log.Infof("[retrySyncProofToNeo] Broadcasting txHash: %s", itx.HashString())
+	errResponse := this.SendITxToMultipleNEONodes(itx)
+	if errResponse != nil && errResponse.HasError() {
+		if strings.Contains(errResponse.ErrorResponse.Error.Message, "Block or transaction validation failed") {
 			log.Infof("[retrySyncProofToNeo] remain tx in retry db, SendRawTransaction: height %d, key %s, db key %s", txHeight, key, helper.BytesToHex(v))
 			return nil
 		}
-
 		err := this.db.DeleteNeoRetry(v)
 		if err != nil {
 			return fmt.Errorf("[retrySyncProofToNeo] this.db.DeleteNeoRetry error: %s", err)
 		}
 		log.Infof("[retrySyncProofToNeo] delete tx from retry db, height %d, key %s, db key %s", txHeight, key, helper.BytesToHex(v))
 		return fmt.Errorf("[retrySyncProofToNeo] SendRawTransaction error: %s, path(cp1): %s, cp2: %d, syncProofToNeo RawTransactionString: %s",
-			response.ErrorResponse.Error.Message, helper.BytesToHex(path), int64(blockHeightReliable), rawTxString)
+		errResponse.ErrorResponse.Error.Message, helper.BytesToHex(path), int64(blockHeightReliable), rawTxString)
 	}
+
 	log.Infof("[retrySyncProofToNeo] syncProofToNeo txHash is: %s", itx.HashString())
 	// mark utxo
 	for _, unspent := range itx.Inputs {
@@ -782,6 +785,31 @@ func (this *SyncService) waitForNeoBlock() {
 		time.Sleep(time.Duration(15) * time.Second)
 		newResponse := this.GetFirstNeoRpcClient().GetBlockCount()
 		newNeoHeight = uint32(newResponse.Result - 1)
+	}
+}
+
+// SendITxToMultipleNEONodes sends itx to multiple nodes listed in config
+// Returns nil if any of the tx was sent successfully without errors
+// Else returns the first response containing error
+func (this *SyncService) SendITxToMultipleNEONodes(itx *tx.InvocationTransaction) (errorResponse *rpc.SendRawTransactionResponse) {
+	log.Infof("[SendTxToMultipleNEONodes] txHash: %s", itx.HashString())
+	rawTxString := itx.RawTransactionString()
+	isSuccessSend := false
+	for _, rpcClient := range this.neoRpcClients {
+		log.Info("Sending to: ", rpcClient.Endpoint.String())
+		response := rpcClient.SendRawTransaction(rawTxString)
+		if response.HasError() {
+			log.Info("Sending Failed ")
+			errorResponse = &response
+		} else {
+			log.Info("Sending Succeeded ")
+			isSuccessSend = true
+		}
+	}
+	if isSuccessSend {
+		return nil
+	} else {
+		return
 	}
 }
 
