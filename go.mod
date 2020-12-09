@@ -15,6 +15,7 @@ require (
 	github.com/polynetwork/poly v0.0.0-20200722075529-eea88acb37b2
 	github.com/polynetwork/poly-go-sdk v0.0.0-20200722030827-6875b6018b93
 	github.com/stretchr/testify v1.5.1
+	github.com/tendermint/tendermint v0.33.3
 	github.com/urfave/cli v1.22.4
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 )

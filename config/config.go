@@ -18,13 +18,14 @@ type Config struct {
 	WalletFile        string
 	RelayAccountsPath string
 
-	NeoWalletFile    string
-	NeoJsonRpcUrls   []string
-	NeoChainID       uint64
-	NeoCCMC          string // little endian string
+	NeoWalletFile     string
+	NeoJsonRpcUrls    []string
+	NeoBroadcastCount uint64
+	NeoChainID        uint64
+	NeoCCMC           string   // little endian string
 	SpecificContracts []string // the specific contracts to monitor
-	NeoSysFee        float64
-	NeoNetFee        float64
+	NeoSysFee         float64
+	NeoNetFee         float64
 
 	ScanInterval     uint64
 	RetryInterval    uint64

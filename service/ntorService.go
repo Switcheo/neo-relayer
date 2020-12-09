@@ -15,7 +15,7 @@ func (this *SyncService) NeoToRelay() {
 		this.neoNextConsensus = ""
 	} else {
 		for j:= 0; j<5; j++{
-			response := this.GetFirstNeoRpcClient().GetBlockByIndex(this.relaySyncHeight-1) // get the last synced height
+			response := this.GetLivelyNeoRpcClient().GetBlockByIndex(this.relaySyncHeight-1) // get the last synced height
 			if response.HasError() {
 				log.Errorf("[NeoToRelay] neoRpcClients.GetBlockByIndex error: %s", response.Error.Message)
 			}
@@ -35,7 +35,7 @@ func (this *SyncService) NeoToRelay() {
 		//get current Neo BlockHeight, 5 times rpc
 		var currentNeoHeight uint32
 		for j := 0; j < 5; j++ {
-			response := this.GetFirstNeoRpcClient().GetBlockCount()
+			response := this.GetLivelyNeoRpcClient().GetBlockCount()
 			if response.HasError() {
 				log.Errorf("[NeoToRelay] neoRpcClients.GetBlockCount error: ", response.Error.Message)
 				break
@@ -64,7 +64,7 @@ func (this *SyncService) neoToRelay(m, n uint32) error {
 		log.Infof("[neoToRelay] start processing NEO block %d", this.relaySyncHeight)
 		// request block from NEO, try rpc request 5 times, if failed, continue
 		for j := 0; j < 5; j++ {
-			response := this.GetFirstNeoRpcClient().GetBlockByIndex(i)
+			response := this.GetLivelyNeoRpcClient().GetBlockByIndex(i)
 			if response.HasError() {
 				return fmt.Errorf("[neoToRelay] neoRpcClients.GetBlockByIndex error: %s", response.Error.Message)
 			}
@@ -85,7 +85,7 @@ func (this *SyncService) neoToRelay(m, n uint32) error {
 				if tx.Type != "InvocationTransaction" {
 					continue
 				}
-				response := this.GetFirstNeoRpcClient().GetApplicationLog(tx.Txid)
+				response := this.GetLivelyNeoRpcClient().GetApplicationLog(tx.Txid)
 				if response.HasError() {
 					return fmt.Errorf("[neoToRelay] neoRpcClients.GetApplicationLog error: %s", response.Error.Message)
 				}

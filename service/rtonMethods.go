@@ -39,7 +39,7 @@ const (
 // GetCurrentNeoChainSyncHeight
 func (this *SyncService) GetCurrentNeoChainSyncHeight(relayChainID uint64) (uint64, error) {
 	arg := models.NewInvokeFunctionStackArg("Integer", fmt.Sprint(relayChainID))
-	response := this.GetFirstNeoRpcClient().InvokeFunction("0x"+helper.ReverseString(this.config.NeoCCMC), GET_CURRENT_HEIGHT, helper.ZeroScriptHashString, arg)
+	response := this.GetLivelyNeoRpcClient().InvokeFunction("0x"+helper.ReverseString(this.config.NeoCCMC), GET_CURRENT_HEIGHT, helper.ZeroScriptHashString, arg)
 	if response.HasError() || response.Result.State == "FAULT" {
 		return 0, fmt.Errorf("[GetCurrentNeoChainSyncHeight] GetCurrentHeight error: %s", "Engine faulted! "+response.Error.Message)
 	}
@@ -132,7 +132,7 @@ func (this *SyncService) changeBookKeeper(block *types.Block) error {
 	rawTxString := itx.RawTransactionString()
 	log.Infof(rawTxString)
 	// send the raw transaction
-	response := this.GetFirstNeoRpcClient().SendRawTransaction(rawTxString)
+	response := this.GetLivelyNeoRpcClient().SendRawTransaction(rawTxString)
 	if response.HasError() {
 		return fmt.Errorf("[changeBookKeeper] SendRawTransaction error: %s, "+
 			"unsigned header hex string: %s, "+
@@ -212,7 +212,7 @@ func (this *SyncService) syncHeaderToNeo(height uint32) error {
 	rawTxString := itx.RawTransactionString()
 
 	// send the raw transaction
-	response := this.GetFirstNeoRpcClient().SendRawTransaction(rawTxString)
+	response := this.GetLivelyNeoRpcClient().SendRawTransaction(rawTxString)
 	if response.HasError() {
 		return fmt.Errorf("[syncHeaderToNeo] SendRawTransaction error: %s, "+
 			"unsigned header hex string: %s, "+
@@ -713,7 +713,7 @@ func (this *SyncService) GetTransactionInputs(from helper.UInt160, assetId helpe
 }
 
 func (this *SyncService) GetGasConsumed(script []byte, checkWitnessHashes string) (*helper.Fixed8, error) {
-	response := this.GetFirstNeoRpcClient().InvokeScript(helper.BytesToHex(script), checkWitnessHashes)
+	response := this.GetLivelyNeoRpcClient().InvokeScript(helper.BytesToHex(script), checkWitnessHashes)
 	if response.HasError() {
 		return nil, fmt.Errorf(response.ErrorResponse.Error.Message)
 	}
@@ -735,7 +735,7 @@ func (this *SyncService) GetGasConsumed(script []byte, checkWitnessHashes string
 }
 
 func (this *SyncService) GetBalance(account helper.UInt160, assetId helper.UInt256) ([]models.Unspent, helper.Fixed8, error) {
-	response := this.GetFirstNeoRpcClient().GetUnspents(helper.ScriptHashToAddress(account))
+	response := this.GetLivelyNeoRpcClient().GetUnspents(helper.ScriptHashToAddress(account))
 	if response.HasError() {
 		return nil, helper.Zero, fmt.Errorf(response.ErrorResponse.Error.Message)
 	}
@@ -779,24 +779,26 @@ func (this *SyncService) GetBalance(account helper.UInt160, assetId helper.UInt2
 }
 
 func (this *SyncService) waitForNeoBlock() {
-	response := this.GetFirstNeoRpcClient().GetBlockCount()
+	response := this.GetLivelyNeoRpcClient().GetBlockCount()
 	currentNeoHeight := uint32(response.Result - 1)
 	newNeoHeight := currentNeoHeight
 	for currentNeoHeight == newNeoHeight {
 		time.Sleep(time.Duration(15) * time.Second)
-		newResponse := this.GetFirstNeoRpcClient().GetBlockCount()
+		newResponse := this.GetLivelyNeoRpcClient().GetBlockCount()
 		newNeoHeight = uint32(newResponse.Result - 1)
 	}
 }
 
-// SendITxToMultipleNEONodes sends itx to multiple nodes listed in config
+// SendITxToMultipleNEONodes sends itx to multiple nodes listed in config up to a maximum of NeoBroadcastCount
 // Returns nil if any of the tx was sent successfully without errors
 // Else returns the first response containing error
 func (this *SyncService) SendITxToMultipleNEONodes(itx *tx.InvocationTransaction) (success bool, errorResponse *rpc.SendRawTransactionResponse) {
 	log.Infof("[SendITxToMultipleNEONodes] txHash: %s", itx.HashString())
 	rawTxString := itx.RawTransactionString()
 	success = false
-	for _, rpcClient := range this.neoRpcClients {
+	log.Info("Trying to get x amt of random clients: ", int(this.config.NeoBroadcastCount))
+	nodesToBroadcast := this.GetRandomNeoRpcClients(int(this.config.NeoBroadcastCount))
+	for _, rpcClient := range nodesToBroadcast {
 		log.Info("Sending to: ", rpcClient.Endpoint.String())
 		response := rpcClient.SendRawTransaction(rawTxString)
 		if response.HasError() {
