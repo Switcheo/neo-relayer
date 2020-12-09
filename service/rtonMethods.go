@@ -796,7 +796,6 @@ func (this *SyncService) SendITxToMultipleNEONodes(itx *tx.InvocationTransaction
 	log.Infof("[SendITxToMultipleNEONodes] txHash: %s", itx.HashString())
 	rawTxString := itx.RawTransactionString()
 	success = false
-	log.Info("Trying to get x amt of random clients: ", int(this.config.NeoBroadcastCount))
 	nodesToBroadcast := this.GetRandomNeoRpcClients(int(this.config.NeoBroadcastCount))
 	for _, rpcClient := range nodesToBroadcast {
 		log.Info("Sending to: ", rpcClient.Endpoint.String())
