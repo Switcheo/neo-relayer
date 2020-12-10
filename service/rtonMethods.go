@@ -114,7 +114,7 @@ func (this *SyncService) changeBookKeeper(block *types.Block) error {
 
 	script := sb.ToArray()
 
-	tb := tx.NewTransactionBuilder(this.config.NeoJsonRpcUrls[0])
+	tb := tx.NewTransactionBuilder(this.GetLivelyNeoRpcClient().Endpoint.String())
 	from, err := helper.AddressToScriptHash(this.neoAccount.Address)
 	// create an InvocationTransaction
 	sysFee := helper.Fixed8FromFloat64(this.config.NeoSysFee)
@@ -193,7 +193,7 @@ func (this *SyncService) syncHeaderToNeo(height uint32) error {
 
 	script := sb.ToArray()
 
-	tb := tx.NewTransactionBuilder(this.config.NeoJsonRpcUrls[0])
+	tb := tx.NewTransactionBuilder(this.GetLivelyNeoRpcClient().Endpoint.String())
 	from, err := helper.AddressToScriptHash(this.neoAccount.Address)
 	// create an InvocationTransaction
 	sysFee := helper.Fixed8FromFloat64(this.config.NeoSysFee)

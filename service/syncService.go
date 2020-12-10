@@ -18,11 +18,11 @@ type SyncService struct {
 	relaySdk        *rsdk.PolySdk
 	relaySyncHeight uint32
 
-	neoAccount          *wallet.Account
-	neoRpcClients       []*neoRpc.RpcClient
-	lastLivelyRpcClient *neoRpc.RpcClient
-	neoSyncHeight       uint32
-	neoNextConsensus    string
+	neoAccount             *wallet.Account
+	neoRpcClients          []*neoRpc.RpcClient
+	lastLivelyNeoRpcClient *neoRpc.RpcClient
+	neoSyncHeight          uint32
+	neoNextConsensus       string
 
 	db     *db.BoltDB
 	config *config.Config
@@ -80,7 +80,7 @@ func (this *SyncService) SyncLivelyNeoClient() {
 			response := client.GetBlockCount()
 			if !response.HasError() && response.Result >= int(this.relaySyncHeight) {
 				log.Info("[SetLivelyNeoClient] Found a new reliable endpoint: ", client.Endpoint.String())
-				this.lastLivelyRpcClient = client
+				this.lastLivelyNeoRpcClient = client
 				break
 			}
 		}
@@ -93,8 +93,8 @@ func (this *SyncService) SyncLivelyNeoClient() {
 
 // GetLivelyNeoRpcClient returns the first Neo rpc client that is lively or the first one in the list
 func (this SyncService) GetLivelyNeoRpcClient() *neoRpc.RpcClient {
-	if this.lastLivelyRpcClient != nil {
-		return this.lastLivelyRpcClient
+	if this.lastLivelyNeoRpcClient != nil {
+		return this.lastLivelyNeoRpcClient
 	}
 	return this.neoRpcClients[0]
 }
