@@ -81,7 +81,7 @@ func (this *SyncService) neoToRelay(m, n uint32) error {
 			// check if this block contains cross chain tx
 			txs := blk.Tx
 			for _, tx := range txs {
-				// log.Infof("[neoToRelay] tx: %s", tx.Txid)
+				log.Infof("[neoToRelay] tx: %s", tx.Txid)
 				if tx.Type != "InvocationTransaction" {
 					continue
 				}
