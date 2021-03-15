@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"time"
+	"strings"
 
 	"github.com/joeqian10/neo-gogogo/helper"
 	"github.com/polynetwork/neo-relayer/log"
@@ -81,8 +82,18 @@ func (this *SyncService) neoToRelay(m, n uint32) error {
 			// check if this block contains cross chain tx
 			txs := blk.Tx
 			for _, tx := range txs {
-				log.Infof("[neoToRelay] tx: %s", tx.Txid)
-				if tx.Type != "InvocationTransaction" {
+				//log.Infof("[neoToRelay] tx: %s", tx.Txid)
+
+				// optimization to relay only when specific contracts contract is included in the txn script
+				shouldContinue := false
+				for _, specificContract := range this.config.SpecificContracts {
+					if strings.Contains(tx.Script, specificContract) {
+						shouldContinue = true
+						break
+					}
+				}
+
+				if tx.Type != "InvocationTransaction" && shouldContinue  {
 					continue
 				}
 				response := this.GetLivelyNeoRpcClient().GetApplicationLog(tx.Txid)
@@ -100,7 +111,7 @@ func (this *SyncService) neoToRelay(m, n uint32) error {
 						u, _ := helper.UInt160FromString(notification.Contract)
 						// outer loop confirm tx is a cross chain tx
 						if helper.BytesToHex(u.Bytes()) == this.config.NeoCCMC {
-							log.Infof("[neoToRelay] CCMC tx: %s", tx.Txid)
+							//log.Infof("[neoToRelay] CCMC tx: %s", tx.Txid)
 							if notification.State.Type != "Array" {
 								return fmt.Errorf("[neoToRelay] notification.State.Type error: Type is not Array")
 							}
