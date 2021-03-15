@@ -85,15 +85,15 @@ func (this *SyncService) neoToRelay(m, n uint32) error {
 				//log.Infof("[neoToRelay] tx: %s", tx.Txid)
 
 				// optimization to relay only when specific contracts contract is included in the txn script
-				shouldContinue := false
+				containsContractHash := false
 				for _, specificContract := range this.config.SpecificContracts {
 					if strings.Contains(tx.Script, specificContract) {
-						shouldContinue = true
+						containsContractHash = true
 						break
 					}
 				}
 
-				if tx.Type != "InvocationTransaction" && shouldContinue  {
+				if tx.Type != "InvocationTransaction" || !containsContractHash  {
 					continue
 				}
 				response := this.GetLivelyNeoRpcClient().GetApplicationLog(tx.Txid)
